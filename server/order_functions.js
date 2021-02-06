@@ -72,22 +72,19 @@ const process_order = async (order, res) => {
     const orderOptions = { upsert: true }
 
     schema.Orders.updateOne(orderConditions, orderUpdate, orderOptions)
-      .then((inventory) => res.status(200).send(inventory))
+      .then(() => res.status(200).send(orderUpdate))
       .catch((err) => res.status(400).send(`Error: ${err}`));
 
     //"ship"
     shipments.listShipments()
   }
 
+  //TO-D0
   //if all not in stock
   // create shipment(s) for in stock items
-
   //update stock in Inventory
-
   //"ship"
-
   //add order to Order and indicate status
-
   //add entry to Backlog to keep track
 }
 

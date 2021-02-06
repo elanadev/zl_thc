@@ -1,39 +1,93 @@
 const schema = require('../database/schema.js');
+const { calculateTotalWeight } = require('./utils')
+const { Shipments, Shipment } = require('./classes.js')
+const maxWeightPerDrone = 1800
 
 const process_order = async (order, res) => {
   const { order_id, requested } = order
 
-  let currentStock = []
+  const queryFilter = requested.map(item => {
+    return { product_id: item.product_id }
+  })
 
-  try {
-    currentStock = await requested.map(item => {
-      const { product_id, quantity } = item
 
-      filter = { product_id }
-      fields = ['stock', 'mass_g']
+  const queryFields = ['stock', 'mass_g']
 
-      let report = {}
+  const inventory = await schema.Inventory.find({ $or: queryFilter }, queryFields)
 
-      schema.Inventory.findOne(filter, fields)
-        .then((doc) => {
-          let { stock, mass_g } = doc
-          console.log('showing data: ', { stock, mass_g })
-          report = { stock, mass_g }
-          console.log('report inside findOne ', report)
-        })
+  //check if all items are in stock
+  let isAllStocked = true
+  requested.map((item, idx) => {
+    if (item.quantity > inventory[idx].stock) {
+      isAllStocked = false
+    }
+  })
 
-      console.log('report inside currentStock map ', report)
-      return report
-    })
-    // .then((response) => console.log(response))
-    // .catch((err) => res.status(400).send(`Error: ${err}`));
+  //if all in stock
 
-  } catch (err) {
-    res.status(400).send(`Error: ${err}`)
-  } finally {
-    console.log('current stock in finally ', { currentStock }) //Why is this line printing before the stuff inside the try??
+  //create shipment(s)
+  if (isAllStocked) {
+    const totalWeight = calculateTotalWeight(requested, inventory)
+    let expandedRequest = []
+
+    for (let i = 0; i < requested.length; i++) {
+      for (let j = 0; j < requested[i].quantity; j++) {
+        expandedRequest.push({ product_id: requested[i].product_id, weight: inventory[i].mass_g })
+      }
+    }
+
+    let minDrones = Math.ceil(totalWeight / maxWeightPerDrone)
+
+    let shipments = new Shipments()
+    let itemCount = expandedRequest.length - 1
+
+    for (let i = 0; i < minDrones; i++) {
+      shipments.newShipment(order_id)
+
+      while (itemCount >= 0) {
+        let runningWeight = shipments.shipments[i].getWeight()
+        if (runningWeight + expandedRequest[itemCount].weight < 1800) {
+          shipments.shipments[i].addItem(expandedRequest[itemCount])
+          //update stock in Inventory
+          let product_id = expandedRequest[itemCount].product_id
+          conditions = { product_id }
+          update = { $inc: { stock: -1 } }
+          options = { new: true }
+          const decrement = await schema.Inventory.updateOne(conditions, update, options)
+          console.log(decrement)
+
+
+          expandedRequest.pop()
+          console.log({ expandedRequest })
+          itemCount--
+        } else {
+          break
+        }
+      }
+    }
+
+
   }
 
+
+
+
+
+
+  //"ship"
+
+  //add order to Order and indicate status
+
+  //if all not in stock
+  // create shipment(s) for in stock items
+
+  //update stock in Inventory
+
+  //"ship"
+
+  //add order to Order and indicate status
+
+  //add entry to Backlog to keep track
 }
 
 module.exports = { process_order }

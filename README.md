@@ -17,6 +17,7 @@ This clears out the "Inventory" database
 This sets up an initial inventory with all stock levels set to zero
 
 Body: Array of objects
+
 Example:
 ```
 [
@@ -33,6 +34,7 @@ Example:
 This updates the stock of each item
 
 Body: Array of objects
+
 Example:
 ```
 [
@@ -48,6 +50,7 @@ This checks whether all the items are in stock. If they are, it creates shipment
 Shipment information is visible in the console and is returned in the body of the result (if using Postman or a similar solution to hit the endpoints)
 
 Body: Array of objects
+
 Example:
 ```
 [

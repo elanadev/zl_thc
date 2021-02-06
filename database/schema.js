@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const { Shipments } = require('../server/classes.js')
+
 
 const { Schema } = mongoose;
 
@@ -13,8 +15,8 @@ const orderSchema = new Schema({
   order_id: Number,
   requested: [{ product_id: Number, quantity: Number }],
   outcome: {
-    shipped: [{ shipment_id: Number, total_weight: Number, contents: [Number] }],
-    notShipped: [{ product_id: Number, leftToShip: Number }]
+    shipped: Array,
+    notShipped: Array
   }
 })
 
@@ -26,7 +28,7 @@ const backlogSchema = new Schema({
 })
 
 const Inventory = mongoose.model('Inventory', inventorySchema);
-const Order = mongoose.model('Order', orderSchema);
+const Orders = mongoose.model('Order', orderSchema);
 const Backlog = mongoose.model('Backlog', backlogSchema);
 
-module.exports = { Inventory, Order, Backlog }
+module.exports = { Inventory, Orders, Backlog }

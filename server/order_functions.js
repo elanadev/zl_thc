@@ -6,17 +6,17 @@ const maxWeightPerDrone = 1800
 const process_order = async (order, res) => {
   const { order_id, requested } = order
 
-  const queryFilter = requested.map(item => {
+  const inventoryFilter = requested.map(item => {
     return { product_id: item.product_id }
   })
 
+  const inventoryFields = ['stock', 'mass_g']
 
-  const queryFields = ['stock', 'mass_g']
-
-  const inventory = await schema.Inventory.find({ $or: queryFilter }, queryFields)
+  const inventory = await schema.Inventory.find({ $or: inventoryFilter }, inventoryFields)
 
   //check if all items are in stock
   let isAllStocked = true
+
   requested.map((item, idx) => {
     if (item.quantity > inventory[idx].stock) {
       isAllStocked = false
@@ -45,20 +45,18 @@ const process_order = async (order, res) => {
       shipments.newShipment(order_id)
 
       while (itemCount >= 0) {
-        let runningWeight = shipments.shipments[i].getWeight()
-        if (runningWeight + expandedRequest[itemCount].weight < 1800) {
-          shipments.shipments[i].addItem(expandedRequest[itemCount])
+        const runningWeight = shipments.shipments[i].getWeight()
+        const newItem = expandedRequest[itemCount]
+
+        if (runningWeight + newItem.weight < 1800) {
+          shipments.shipments[i].addItem(newItem)
           //update stock in Inventory
-          let product_id = expandedRequest[itemCount].product_id
-          conditions = { product_id }
-          update = { $inc: { stock: -1 } }
-          options = { new: true }
-          const decrement = await schema.Inventory.updateOne(conditions, update, options)
-          console.log(decrement)
-
-
+          const product_id = newItem.product_id
+          decrementConditions = { product_id }
+          decrementUpdate = { $inc: { stock: -1 } }
+          decrementOptions = { new: true }
+          await schema.Inventory.updateOne(decrementConditions, decrementUpdate, decrementOptions)
           expandedRequest.pop()
-          console.log({ expandedRequest })
           itemCount--
         } else {
           break
@@ -66,17 +64,20 @@ const process_order = async (order, res) => {
       }
     }
 
+    //add order to Order and indicate status
+    const orderConditions = { order_id }
+    const orderUpdate = {
+      order_id, requested, outcome: { shipped: shipments }
+    }
+    const orderOptions = { upsert: true }
 
+    schema.Orders.updateOne(orderConditions, orderUpdate, orderOptions)
+      .then((inventory) => res.status(200).send(inventory))
+      .catch((err) => res.status(400).send(`Error: ${err}`));
+
+    //"ship"
+    shipments.listShipments()
   }
-
-
-
-
-
-
-  //"ship"
-
-  //add order to Order and indicate status
 
   //if all not in stock
   // create shipment(s) for in stock items

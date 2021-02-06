@@ -22,9 +22,9 @@ router.route('/order').patch((req, res) => {
 });
 
 
-router.route('/ship').get((req, res) => {
-  res.status(200).send(finalShipments)
-});
+// router.route('/ship').get((req, res) => {
+//   res.status(200).send(finalShipments)
+// });
 
 
 module.exports = router;
